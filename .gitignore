@@ -1,0 +1,6 @@
+.vs/
+/ImageTrackingApi/bin/*
+/ImageTrackingApi/obj/*
+/ImageTrackingApiTests/bin/*
+/ImageTrackingApiTests/obj/*
+/TestResults/
