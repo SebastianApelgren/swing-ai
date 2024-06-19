@@ -1,3 +1,4 @@
+using ImageTrackingApi.Tracking.Models;
 using ImageTrackingApi.Tracking.Pose25;
 
 namespace ImageTrackingApiTests
@@ -5,15 +6,20 @@ namespace ImageTrackingApiTests
     [TestClass]
     public class UnitTest1
     {
+        [ClassInitialize]
+        public static async Task Initialize(TestContext context)
+        {
+            await TrackingHelper.Instance.LoadModel();
+        }
+
         [TestMethod]
         public async Task Track()
         {
-            byte[] bytes = File.ReadAllBytes("C:\\users\\adam\\desktop\\test.jpg");
-            
-            await TrackingHelper.Instance.LoadModel();
-            TrackingHelper.Instance.Track(bytes, 1267, 846);
+            await Task.CompletedTask;
 
-            
+            byte[] bytes = File.ReadAllBytes("C:\\users\\adam\\desktop\\test.jpg");
+
+            TrackingResult result = TrackingHelper.Instance.Track(bytes, 0);
         }
     }
 }

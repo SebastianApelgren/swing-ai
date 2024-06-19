@@ -5,6 +5,11 @@ using Emgu.CV;
 using System.Drawing;
 using ImageTrackingApi.Helpers;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
+using ImageTrackingApi.Tracking.Models;
+using Emgu.CV.Mcc;
+using static System.Net.Mime.MediaTypeNames;
+using System.Reflection;
 
 namespace ImageTrackingApi.Tracking.Pose25
 {
@@ -45,61 +50,72 @@ namespace ImageTrackingApi.Tracking.Pose25
             }
         }
 
-        public void Track(byte[] imageBytes, int width, int height)
+        public TrackingResult Track(byte[] imageBytes, int index)
         {
-            GCHandle? pinnedArray = null;
-
-            try
+            using (Mat img = new Mat())
             {
-                Image<Bgr, byte> image = new Image<Bgr, byte>(width, height); // width * 3 is because of three bytes per pixel
-                image.Bytes = imageBytes;
+                CvInvoke.Imdecode(imageBytes, ImreadModes.Color, img);
 
-                Track(image);
-            }
-            catch { throw; }
-            finally
-            {
-                if (pinnedArray != null)
-                {
-                    pinnedArray.Value.Free();
-                }
+                return Track(img.ToImage<Bgr, byte>(), index);
             }
         }
 
-        public void Track(Image<Bgr, byte> image)
+        private TrackingResult Track(Image<Bgr, byte> image, int index)
         {
             // for openopse
             int inWidth = 368;
             int inHeight = 368;
-            float threshold = 0.1f;
-            int nPoints = 25;
 
             Net net = CaffeModel;
-
-            int imgHeight = image.Height;
-            int imgWidth = image.Width;
 
             Mat blob = DnnInvoke.BlobFromImage(image, 1.0 / 255.0, new Size(inWidth, inHeight), new MCvScalar(0, 0, 0));
 
             net.SetInput(blob);
             net.SetPreferableBackend(Emgu.CV.Dnn.Backend.OpenCV);
 
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             Mat output = net.Forward();
 
-            int H = output.SizeOfDimension[2];
-            int W = output.SizeOfDimension[3];
-            Array HeatMap = output.GetData();
+            stopwatch.Stop();
+            long time = stopwatch.ElapsedMilliseconds;
+
+            List<Point> points = GetPointListFromOutput(output, image.Width, image.Height, bodyPartCount: 25, heatmapThreshold: 0.1f);
+
+            BodyPart[] bodyParts = new BodyPart[25];
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                BodyPart bodyPart = new BodyPart((BodyPartType)i, points[i].X, points[i].Y);
+                bodyParts[i] = bodyPart;
+            }
+
+            DrawSkeleton(points, image);
+
+            TrackingResult result = new TrackingResult((int)time, bodyParts, index);
+            return result;
+        }
+
+        private List<Point> GetPointListFromOutput(Mat output, int imageWidth, int imageHeight, int bodyPartCount, float heatmapThreshold = 0.1f)
+        {
+            int height = output.SizeOfDimension[2];
+            int width = output.SizeOfDimension[3];
+            Array heatMap = output.GetData();
 
             List<Point> points = new List<Point>();
 
-            for (int i = 0; i < nPoints; i++)
+            for (int i = 0; i < bodyPartCount; i++)
             {
-                Matrix<float> matrix = new Matrix<float>(H, W);
-                for (int row = 0; row < H; row++)
+                Matrix<float> matrix = new Matrix<float>(height, width);
+                for (int row = 0; row < height; row++)
                 {
-                    for (int col = 0; col < W; col++)
+                    for (int col = 0; col < width; col++)
                     {
-                        matrix[row, col] = (float)HeatMap.GetValue(0, i, row, col);
+                        object? value = heatMap.GetValue(0, i, row, col);
+
+                        if (value == null) throw new Exception("Value from heatmap is null");
+
+                        matrix[row, col] = (float)value;
                     }
                 }
 
@@ -108,10 +124,10 @@ namespace ImageTrackingApi.Tracking.Pose25
 
                 CvInvoke.MinMaxLoc(matrix, ref minVal, ref maxVal, ref minLoc, ref maxLoc);
 
-                int x = image.Width * maxLoc.X / W;
-                int y = image.Height * maxLoc.Y / H;
+                int x = imageWidth * maxLoc.X / width;
+                int y = imageHeight * maxLoc.Y / height;
 
-                if (maxVal > threshold)
+                if (maxVal > heatmapThreshold)
                 {
                     points.Add(new Point(x, y));
                 }
@@ -121,6 +137,11 @@ namespace ImageTrackingApi.Tracking.Pose25
                 }
             }
 
+            return points;
+        }
+
+        private void DrawSkeleton(List<Point> points, Image<Bgr, byte> image)
+        {
             // display points on image
             for (int i = 0; i < points.Count; i++)
             {
@@ -143,6 +164,8 @@ namespace ImageTrackingApi.Tracking.Pose25
                     CvInvoke.Line(image, points[startIndex], points[endIndex], new MCvScalar(255, 0, 0), 2);
                 }
             }
+
+            image.Save("c:\\users\\adam\\desktop\\output.jpg");
         }
     }
 }
