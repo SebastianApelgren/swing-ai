@@ -9,7 +9,7 @@ namespace ImageTrackingApiTests
         [ClassInitialize]
         public static async Task Initialize(TestContext context)
         {
-            await TrackingHelper.Instance.LoadModel();
+            await TrackingHelper.Instance.LoadModelAsync();
         }
 
         [TestMethod]

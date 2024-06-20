@@ -1,4 +1,6 @@
-﻿namespace ImageTrackingApi.Tracking.Models
+﻿using System.Text.Json.Serialization;
+
+namespace ImageTrackingApi.Tracking.Models
 {
     public class TrackingResult
     {
@@ -6,11 +8,15 @@
         public BodyPart[] BodyParts { get; set; }
         public int Index { get; set; }
 
-        public TrackingResult(int timeConsumed, BodyPart[] bodyParts, int index)
+        [JsonIgnore]
+        public int[,] PointPairs { get; set; }
+
+        public TrackingResult(int timeConsumed, BodyPart[] bodyParts, int index, int[,] pointPairs)
         {
             TimeConsumed = timeConsumed;
             BodyParts = bodyParts;
             Index = index;
+            PointPairs = pointPairs;
         }
     }
 }

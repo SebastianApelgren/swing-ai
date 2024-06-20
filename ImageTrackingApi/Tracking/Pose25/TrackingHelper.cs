@@ -28,6 +28,8 @@ namespace ImageTrackingApi.Tracking.Pose25
 
         private static TrackingHelper? instance;
 
+        public bool HasModelLoaded => caffeModel != null;
+
         public Net CaffeModel
         {
             get
@@ -39,7 +41,7 @@ namespace ImageTrackingApi.Tracking.Pose25
 
         private Net? caffeModel;
 
-        public async Task LoadModel()
+        public async Task LoadModelAsync()
         {
             using (MemoryStream prototxt = await EmbeddedResourceHelper.GetEmbeddedResource("pose_deploy.prototxt"))
             {
@@ -50,11 +52,21 @@ namespace ImageTrackingApi.Tracking.Pose25
             }
         }
 
-        public TrackingResult Track(byte[] imageBytes, int index)
+        public TrackingResult Track(IFormFile file, int index)
+        {
+            using (StreamReader reader = new StreamReader(file.OpenReadStream()))
+            {
+                byte[] bytes = new byte[file.Length];
+                reader.BaseStream.Read(bytes, 0, (int)file.Length);
+                return Track(bytes, index);
+            }
+        }
+
+        public TrackingResult Track(byte[] jpgImageBytes, int index)
         {
             using (Mat img = new Mat())
             {
-                CvInvoke.Imdecode(imageBytes, ImreadModes.Color, img);
+                CvInvoke.Imdecode(jpgImageBytes, ImreadModes.Color, img);
 
                 return Track(img.ToImage<Bgr, byte>(), index);
             }
@@ -86,13 +98,13 @@ namespace ImageTrackingApi.Tracking.Pose25
 
             for (int i = 0; i < points.Count; i++)
             {
-                BodyPart bodyPart = new BodyPart((BodyPartType)i, points[i].X, points[i].Y);
+                BodyPart bodyPart = new BodyPart((BodyPartType)i, points[i].X, points[i].Y, points[i].IsEmpty);
                 bodyParts[i] = bodyPart;
             }
 
-            DrawSkeleton(points, image);
+            //DrawSkeleton(points, image);
 
-            TrackingResult result = new TrackingResult((int)time, bodyParts, index);
+            TrackingResult result = new TrackingResult((int)time, bodyParts, index, Constants.PointPairs);
             return result;
         }
 
@@ -140,32 +152,6 @@ namespace ImageTrackingApi.Tracking.Pose25
             return points;
         }
 
-        private void DrawSkeleton(List<Point> points, Image<Bgr, byte> image)
-        {
-            // display points on image
-            for (int i = 0; i < points.Count; i++)
-            {
-                Point p = points[i];
-                if (p != Point.Empty)
-                {
-                    CvInvoke.Circle(image, p, 5, new MCvScalar(0, 255, 0), -1);
-                    CvInvoke.PutText(image, i.ToString(), p, FontFace.HersheySimplex, 0.8, new MCvScalar(0, 0, 255), 1, LineType.AntiAlias);
-                }
-            }
 
-            // draw skeleton
-            for (int i = 0; i < Constants.PointPairs.GetLongLength(0); i++)
-            {
-                int startIndex = Constants.PointPairs[i, 0];
-                int endIndex = Constants.PointPairs[i, 1];
-
-                if (points.Contains(points[startIndex]) && points.Contains(points[endIndex]))
-                {
-                    CvInvoke.Line(image, points[startIndex], points[endIndex], new MCvScalar(255, 0, 0), 2);
-                }
-            }
-
-            image.Save("c:\\users\\adam\\desktop\\output.jpg");
-        }
     }
 }
