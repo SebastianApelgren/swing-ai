@@ -41,9 +41,9 @@ namespace ImageTrackingApi.Tracking.Pose25
 
         public async Task LoadModel()
         {
-            using (MemoryStream prototxt = await EmbeddedResourceHelper.GetTestFileAsync("pose_deploy.prototxt"))
+            using (MemoryStream prototxt = await EmbeddedResourceHelper.GetEmbeddedResource("pose_deploy.prototxt"))
             {
-                using (MemoryStream model = await EmbeddedResourceHelper.GetTestFileAsync("pose_iter_584000.caffemodel"))
+                using (MemoryStream model = await EmbeddedResourceHelper.GetEmbeddedResource("pose_iter_584000.caffemodel"))
                 {
                     caffeModel = DnnInvoke.ReadNetFromCaffe(prototxt.ToArray(), model.ToArray());
                 }

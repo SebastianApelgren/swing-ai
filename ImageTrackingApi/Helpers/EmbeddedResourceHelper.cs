@@ -4,7 +4,7 @@ namespace ImageTrackingApi.Helpers
 {
     public class EmbeddedResourceHelper
     {
-        public static async Task<MemoryStream> GetTestFileAsync(string filename)
+        public static async Task<MemoryStream> GetEmbeddedResource(string filename)
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             string resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith(filename));
