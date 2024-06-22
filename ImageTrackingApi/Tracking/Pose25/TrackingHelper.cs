@@ -83,7 +83,7 @@ namespace ImageTrackingApi.Tracking.Pose25
             Mat blob = DnnInvoke.BlobFromImage(image, 1.0 / 255.0, new Size(inWidth, inHeight), new MCvScalar(0, 0, 0));
 
             net.SetInput(blob);
-            net.SetPreferableBackend(Emgu.CV.Dnn.Backend.OpenCV);
+            net.SetPreferableBackend(Emgu.CV.Dnn.Backend.Default);
 
             Stopwatch stopwatch = Stopwatch.StartNew();
 
@@ -102,10 +102,47 @@ namespace ImageTrackingApi.Tracking.Pose25
                 bodyParts[i] = bodyPart;
             }
 
-            //DrawSkeleton(points, image);
+            BodyPart[] relevantBodyParts = ExtractRelevantBodyParts(
+                bodyParts,
+                [
+                    (int)BodyPartType.Neck,
+                    (int)BodyPartType.RightShoulder,
+                    (int)BodyPartType.RightElbow,
+                    (int)BodyPartType.RightWrist,
+                    (int)BodyPartType.LeftShoulder,
+                    (int)BodyPartType.LeftElbow,
+                    (int)BodyPartType.LeftWrist,
+                    (int)BodyPartType.MidHip,
+                    (int)BodyPartType.RightHip,
+                    (int)BodyPartType.RightKnee,
+                    (int)BodyPartType.RightAnkle,
+                    (int)BodyPartType.LeftHip,
+                    (int)BodyPartType.LeftKnee,
+                    (int)BodyPartType.LeftAnkle,
+                    (int)BodyPartType.RightEye,
+                    (int)BodyPartType.LeftEye,
+                    (int)BodyPartType.LeftBigToe,
+                    (int)BodyPartType.LeftSmallToe,
+                    (int)BodyPartType.LeftHeel,
+                    (int)BodyPartType.RightBigToe,
+                    (int)BodyPartType.RightSmallToe,
+                    (int)BodyPartType.RightHeel
+                ]);
 
-            TrackingResult result = new TrackingResult((int)time, bodyParts, index, Constants.PointPairs);
+            TrackingResult result = new TrackingResult((int)time, relevantBodyParts, index, Constants.PointPairs);
             return result;
+        }
+
+        private BodyPart[] ExtractRelevantBodyParts(BodyPart[] bodyParts, int[] relevantBodyPartIndices)
+        {
+            BodyPart[] relevantBodyParts = new BodyPart[relevantBodyPartIndices.Length];
+
+            for (int i = 0; i < relevantBodyPartIndices.Length; i++)
+            {
+                relevantBodyParts[i] = bodyParts[relevantBodyPartIndices[i]];
+            }
+
+            return relevantBodyParts;
         }
 
         private List<Point> GetPointListFromOutput(Mat output, int imageWidth, int imageHeight, int bodyPartCount, float heatmapThreshold = 0.1f)
@@ -151,7 +188,5 @@ namespace ImageTrackingApi.Tracking.Pose25
 
             return points;
         }
-
-
     }
 }

@@ -32,8 +32,7 @@ namespace ImageTrackingApi.Tracking.Visualization
 
                 using (MemoryStream stream = new MemoryStream())
                 {
-                    image.ToBitmap().Save(stream, ImageFormat.Jpeg);
-                    return stream.ToArray();
+                    return CvInvoke.Imencode(".jpg", image);
                 }
             }
         }
@@ -50,19 +49,46 @@ namespace ImageTrackingApi.Tracking.Visualization
                 if (p != Point.Empty)
                 {
                     CvInvoke.Circle(image, p, 5, new MCvScalar(0, 255, 0), -1);
-                    CvInvoke.PutText(image, bodyPart.BodyPartTypeName, p, FontFace.HersheySimplex, 0.8, new MCvScalar(0, 0, 255), 1, LineType.AntiAlias);
                 }
             }
 
-            // draw skeleton
-            for (int i = 0; i < result.PointPairs.GetLongLength(0); i++)
-            {
-                int startIndex = result.PointPairs[i, 0];
-                int endIndex = result.PointPairs[i, 1];
+            Dictionary<BodyPartType, BodyPart> bodyPartDict = result.BodyParts.ToDictionary(x => x.Type);
+            List<Tuple<BodyPartType, BodyPartType>> pairs =
+            [
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.Nose, BodyPartType.Neck),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.Neck, BodyPartType.RightShoulder),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightShoulder, BodyPartType.RightElbow),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightElbow, BodyPartType.RightWrist),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.Neck, BodyPartType.LeftShoulder),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftShoulder, BodyPartType.LeftElbow),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftElbow, BodyPartType.LeftWrist),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.Neck, BodyPartType.MidHip),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.MidHip, BodyPartType.RightHip),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightHip, BodyPartType.RightKnee),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightKnee, BodyPartType.RightAnkle),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.MidHip, BodyPartType.LeftHip),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftHip, BodyPartType.LeftKnee),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftKnee, BodyPartType.LeftAnkle),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightAnkle, BodyPartType.RightHeel),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightAnkle, BodyPartType.RightBigToe),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.RightBigToe, BodyPartType.RightSmallToe),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftAnkle, BodyPartType.LeftHeel),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftAnkle, BodyPartType.LeftBigToe),
+                new Tuple<BodyPartType, BodyPartType>(BodyPartType.LeftBigToe, BodyPartType.LeftSmallToe),
+            ];
 
-                if (points.Contains(points[startIndex]) && points.Contains(points[endIndex]))
+            // draw skeleton
+            foreach (Tuple<BodyPartType, BodyPartType> pair in pairs)
+            {
+                if (bodyPartDict.ContainsKey(pair.Item1) && bodyPartDict.ContainsKey(pair.Item2))
                 {
-                    CvInvoke.Line(image, points[startIndex], points[endIndex], new MCvScalar(255, 0, 0), 2);
+                    Point start = new Point((int)bodyPartDict[pair.Item1].X, (int)bodyPartDict[pair.Item1].Y);
+                    Point end = new Point((int)bodyPartDict[pair.Item2].X, (int)bodyPartDict[pair.Item2].Y);
+
+                    if (start != Point.Empty && end != Point.Empty)
+                    {
+                        CvInvoke.Line(image, start, end, new MCvScalar(255, 0, 0), 2);
+                    }
                 }
             }
         }
