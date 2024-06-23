@@ -9,7 +9,7 @@ namespace ImageTrackingApiTests
         [ClassInitialize]
         public static async Task Initialize(TestContext context)
         {
-            await TrackingHelper.Instance.LoadModelAsync();
+            await Pose25Estimator.Instance.InitializeAsync();
         }
 
         [TestMethod]
@@ -19,7 +19,7 @@ namespace ImageTrackingApiTests
 
             byte[] bytes = File.ReadAllBytes("C:\\users\\adam\\desktop\\test.jpg");
 
-            TrackingResult result = TrackingHelper.Instance.Track(bytes, 0);
+            TrackingResult result = Pose25Estimator.Instance.TrackAsync(bytes, 0);
         }
     }
 }

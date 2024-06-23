@@ -1,7 +1,7 @@
-﻿using ImageTrackingApi.Tracking.Models;
+﻿using ImageTrackingApi.Tracking;
+using ImageTrackingApi.Tracking.Models;
 using ImageTrackingApi.Tracking.Pose25;
 using ImageTrackingApi.Tracking.Visualization;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -15,10 +15,12 @@ namespace ImageTrackingApi.Controllers
         [ProducesResponseType(typeof(List<TrackingResult>), (int)HttpStatusCode.OK)]
         public async Task<ObjectResult> Track(IFormFile file, int index = 0)
         {
-            if (!TrackingHelper.Instance.HasModelLoaded)
-                await TrackingHelper.Instance.LoadModelAsync();
+            IPoseEstimator poseEstimator = Pose25Estimator.Instance;
 
-            TrackingResult result = TrackingHelper.Instance.Track(file, index);
+            if (!Pose25Estimator.Instance.HasModelLoaded)
+                await poseEstimator.InitializeAsync();
+
+            TrackingResult result = await poseEstimator.TrackAsync(file, index);
 
             return Ok(result);
         }
@@ -27,10 +29,12 @@ namespace ImageTrackingApi.Controllers
         [ProducesResponseType(typeof(List<TrackingResult>), (int)HttpStatusCode.OK)]
         public async Task<FileContentResult> TrackAndDisplay(IFormFile file, int index = 0)
         {
-            if (!TrackingHelper.Instance.HasModelLoaded)
-                await TrackingHelper.Instance.LoadModelAsync();
+            IPoseEstimator poseEstimator = Pose25Estimator.Instance;
 
-            TrackingResult result = TrackingHelper.Instance.Track(file, index);
+            if (!Pose25Estimator.Instance.HasModelLoaded)
+                await poseEstimator.InitializeAsync();
+
+            TrackingResult result = await poseEstimator.TrackAsync(file, index);
             byte[] displayResult = await TrackingVisualizer.DrawResult(result, file);
 
             return new FileContentResult(displayResult, "image/jpeg");

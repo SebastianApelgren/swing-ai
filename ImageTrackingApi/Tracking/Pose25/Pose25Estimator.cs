@@ -4,29 +4,25 @@ using Emgu.CV.Structure;
 using Emgu.CV;
 using System.Drawing;
 using ImageTrackingApi.Helpers;
-using System.Runtime.InteropServices;
 using System.Diagnostics;
 using ImageTrackingApi.Tracking.Models;
-using Emgu.CV.Mcc;
-using static System.Net.Mime.MediaTypeNames;
-using System.Reflection;
 
 namespace ImageTrackingApi.Tracking.Pose25
 {
-    public class TrackingHelper
+    public class Pose25Estimator : IPoseEstimator
     {
-        public static TrackingHelper Instance
+        public static Pose25Estimator Instance
         {
             get
             {
                 if (instance == null)
-                    instance = new TrackingHelper();
+                    instance = new Pose25Estimator();
 
                 return instance;
             }
         }
 
-        private static TrackingHelper? instance;
+        private static Pose25Estimator? instance;
 
         public bool HasModelLoaded => caffeModel != null;
 
@@ -34,14 +30,14 @@ namespace ImageTrackingApi.Tracking.Pose25
         {
             get
             {
-                if (caffeModel == null) throw new Exception("Model not loaded, call LoadModel() first!");
+                if (caffeModel == null) throw new Exception("Model not loaded, call Initialize() first!");
                 return caffeModel;
             }
         }
 
         private Net? caffeModel;
 
-        public async Task LoadModelAsync()
+        public async Task InitializeAsync()
         {
             using (MemoryStream prototxt = await EmbeddedResourceHelper.GetEmbeddedResource("pose_deploy.prototxt"))
             {
@@ -52,29 +48,25 @@ namespace ImageTrackingApi.Tracking.Pose25
             }
         }
 
-        public TrackingResult Track(IFormFile file, int index)
-        {
-            using (StreamReader reader = new StreamReader(file.OpenReadStream()))
-            {
-                byte[] bytes = new byte[file.Length];
-                reader.BaseStream.Read(bytes, 0, (int)file.Length);
-                return Track(bytes, index);
-            }
-        }
-
-        public TrackingResult Track(byte[] jpgImageBytes, int index)
+        public async Task<TrackingResult> TrackAsync(byte[] jpgImageBytes, int index)
         {
             using (Mat img = new Mat())
             {
                 CvInvoke.Imdecode(jpgImageBytes, ImreadModes.Color, img);
 
-                return Track(img.ToImage<Bgr, byte>(), index);
+                TrackingResult? result = null;
+
+                await Task.Run(() => { result = Track(img.ToImage<Bgr, byte>(), index); });
+
+                if (result == null)
+                    throw new Exception("Tracking failed");
+
+                return result;
             }
         }
 
         private TrackingResult Track(Image<Bgr, byte> image, int index)
         {
-            // for openopse
             int inWidth = 368;
             int inHeight = 368;
 
@@ -129,7 +121,7 @@ namespace ImageTrackingApi.Tracking.Pose25
                     (int)BodyPartType.RightHeel
                 ]);
 
-            TrackingResult result = new TrackingResult((int)time, relevantBodyParts, index, Constants.PointPairs);
+            TrackingResult result = new TrackingResult((int)time, relevantBodyParts, index);
             return result;
         }
 
